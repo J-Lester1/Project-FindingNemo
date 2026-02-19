@@ -16,7 +16,8 @@ FG_COLOR = "#ffffff"
 ACCENT_BLUE = "#007acc"    
 ACCENT_GREEN = "#28a745"   
 ACCENT_RED = "#dc3545"     
-HOVER_COLOR = "#444444"     
+HOVER_COLOR = "#444444"
+FORM_BG = "#252525"
 
 # ---------------- INITIALIZATION ----------------
 if not os.path.exists(KEY_FILE):
@@ -93,7 +94,6 @@ def create_button(master, text, command, bg_color, width=15):
                       activebackground=active_bg, activeforeground="white", cursor="hand2")
     return btn
 
-# ---------------- GUI LOGIC ----------------
 # ---------------- AUTHORIZATION ----------------
 try:
     from face_auth import FaceAuthenticator
@@ -107,7 +107,6 @@ def verify_identity(parent=None):
     Returns True if verified, False otherwise.
     """
     if FACE_AUTH_AVAILABLE:
-        # Prompt user to choose method or auto-start face auth
         if messagebox.askyesno("Identity Verification", "Use Face Recognition?", parent=parent):
             authenticator = FaceAuthenticator()
             success, msg = authenticator.verify_user()
@@ -119,6 +118,54 @@ def verify_identity(parent=None):
     # Fallback to Password
     pw = simpledialog.askstring("Master Password", "Enter Marlin's Secret:", show="*", parent=parent)
     return pw == Marlins_Secret
+
+# ============================================================
+#                    MAIN APPLICATION
+# ============================================================
+root = tk.Tk()
+root.title("NEMO'S PASSWORD MANAGER")
+root.configure(bg=BG_COLOR)
+
+# ---------- FULL-SCREEN MODE ----------
+root.attributes('-fullscreen', True)
+is_fullscreen = True
+
+def toggle_fullscreen(event=None):
+    global is_fullscreen
+    is_fullscreen = not is_fullscreen
+    root.attributes('-fullscreen', is_fullscreen)
+
+root.bind("<Escape>", toggle_fullscreen)
+root.bind("<F11>", toggle_fullscreen)
+
+# ---------- TREEVIEW STYLE ----------
+style = ttk.Style()
+style.theme_use("clam")
+style.configure("Treeview", background=SECONDARY_BG, foreground=FG_COLOR, fieldbackground=SECONDARY_BG, rowheight=35, font=("Segoe UI", 11))
+style.configure("Treeview.Heading", background=BG_COLOR, foreground=FG_COLOR, font=("Segoe UI", 11, "bold"))
+style.map("Treeview", background=[('selected', ACCENT_BLUE)])
+
+# ============================================================
+#                    PANEL SYSTEM
+# ============================================================
+panels = {}
+current_panel = None
+
+def show_panel(name):
+    """Hide all panels, then show the requested one."""
+    global current_panel
+    for pname, panel in panels.items():
+        panel.pack_forget()
+    panels[name].pack(expand=True, fill="both")
+    current_panel = name
+
+# ---- Global form state ----
+form_mode = "add"
+form_index = None
+
+# ============================================================
+#    FORWARD-DECLARED FUNCTIONS (used by UI widgets below)
+# ============================================================
 
 def refresh_table():
     try:
@@ -133,91 +180,26 @@ def refresh_table():
     except NameError:
         pass
 
-def on_search_focus_in(event):
-    if search_entry.get() == "Search accounts...":
-        search_entry.delete(0, tk.END)
-        search_entry.config(fg="white")
+def clear_form():
+    """Clear all form entries."""
+    e_name.delete(0, tk.END)
+    e_url.delete(0, tk.END)
+    e_user.delete(0, tk.END)
+    e_pass.delete(0, tk.END)
+    e_type.delete(0, tk.END)
 
-def on_search_focus_out(event):
-    if search_entry.get() == "":
-        search_entry.insert(0, "Search accounts...")
-        search_entry.config(fg="grey")
-
-# ---------------- ACTIONS ----------------
-def open_account_window(mode="add", index=None):
-    # Hide main window
-    root.withdraw()
-
-    def restore_main_window():
-        top.destroy()
-        root.deiconify()
-
-    def validate_number(char):
-        if char.isdigit() and int(char) in [1,2,3,4]:
-            # Simple check for single digit 1-4, but allows logic for entry
-            return True
-        if char == "": return True # Allow delete
-        return char.isdigit() # Basic digit check for the entry field restrictions
-
-    def randomize_enc():
-        e_type.delete(0, tk.END)
-        e_type.insert(0, str(random.randint(1, 4)))
-
-    def save():
-        try:
-            df = load_data()
-            etype_val = e_type.get()
-            if not etype_val: etype_val = "1"
-            etype = int(etype_val)
-            
-            enc_pass = encrypt_type(e_pass.get(), etype)
-            new_row = {"name": e_name.get(), "url": e_url.get(), "username": e_user.get(), "password": enc_pass, "encryption_type": etype}
-            
-            if mode == "add":
-                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            else:
-                df.iloc[index] = new_row
-            
-            save_data(df)
-            refresh_table()
-            messagebox.showinfo("Success", "Account saved successfully!")
-            restore_main_window()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save: {e}")
-
-    top = tk.Toplevel(root)
-    top.title("Secure Entry" if mode == "add" else "Edit Entry")
-    top.geometry("380x500")
-    top.configure(bg=SECONDARY_BG, padx=20, pady=20)
-    top.protocol("WM_DELETE_WINDOW", restore_main_window) # Handle X click
+def show_form_panel(mode="add", index=None):
+    """Prepare and show the form panel."""
+    global form_mode, form_index
+    form_mode = mode
+    form_index = index
+    clear_form()
     
-    lbl_cfg = {"bg": SECONDARY_BG, "fg": FG_COLOR, "font": ("Arial", 9, "bold")}
-    
-    tk.Label(top, text="ACCOUNT NAME", **lbl_cfg).pack(pady=(5,0))
-    e_name = tk.Entry(top, width=30); e_name.pack(pady=5)
-    
-    tk.Label(top, text="URL", **lbl_cfg).pack(pady=(5,0))
-    e_url = tk.Entry(top, width=30); e_url.pack(pady=5)
-    
-    tk.Label(top, text="USERNAME", **lbl_cfg).pack(pady=(5,0))
-    e_user = tk.Entry(top, width=30); e_user.pack(pady=5)
-    
-    tk.Label(top, text="PASSWORD", **lbl_cfg).pack(pady=(5,0))
-    e_pass = tk.Entry(top, show="*", width=30); e_pass.pack(pady=5)
-    
-    tk.Label(top, text="ENC TYPE (1-4)", **lbl_cfg).pack(pady=(5,0))
-    
-    # Frame for Enc Type and Random Button
-    enc_frame = tk.Frame(top, bg=SECONDARY_BG)
-    enc_frame.pack(pady=5)
-    
-    vcmd = (top.register(validate_number), '%S')
-    e_type = tk.Entry(enc_frame, width=20, validate="key", validatecommand=vcmd)
-    e_type.pack(side="left", padx=(0, 5))
-    
-    tk.Button(enc_frame, text="🎲", command=randomize_enc, bg=ACCENT_BLUE, fg="white", font=("Arial", 8), width=3, cursor="hand2").pack(side="left")
-
-    if mode == "edit" and index is not None:
+    if mode == "add":
+        form_title_label.config(text="➕ ADD NEW ACCOUNT")
+        e_type.insert(0, "1")
+    elif mode == "edit" and index is not None:
+        form_title_label.config(text="✏️ EDIT ACCOUNT")
         df = load_data()
         row = df.iloc[index]
         e_name.insert(0, row["name"])
@@ -227,26 +209,45 @@ def open_account_window(mode="add", index=None):
             pwd = decrypt_type(row["password"], int(row["encryption_type"]))
             e_pass.insert(0, pwd)
         except:
-            pass 
+            pass
         e_type.insert(0, str(row["encryption_type"]))
-    else:
-        e_type.insert(0, "1")
+    
+    show_panel("form")
 
-    # Buttons Frame
-    action_frame = tk.Frame(top, bg=SECONDARY_BG)
-    action_frame.pack(pady=20)
+def save_form():
+    global form_mode, form_index
+    try:
+        df = load_data()
+        etype_val = e_type.get()
+        if not etype_val: etype_val = "1"
+        etype = int(etype_val)
+        
+        enc_pass = encrypt_type(e_pass.get(), etype)
+        new_row = {"name": e_name.get(), "url": e_url.get(), "username": e_user.get(), "password": enc_pass, "encryption_type": etype}
+        
+        if form_mode == "add":
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        else:
+            df.iloc[form_index] = new_row
+        
+        save_data(df)
+        refresh_table()
+        messagebox.showinfo("Success", "Account saved successfully!")
+        show_panel("main")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to save: {e}")
 
-    create_button(action_frame, "SAVE", save, ACCENT_GREEN, width=12).pack(side="left", padx=5)
-    create_button(action_frame, "CANCEL", restore_main_window, ACCENT_RED, width=12).pack(side="left", padx=5)
+def cancel_form():
+    show_panel("main")
 
-def decrypt_selected(index=None):
-    if index is None:
-        sel = tree.selection()
-        if not sel:
-            messagebox.showwarning("Selection", "Please select an account first.")
-            return
-        index = int(sel[0])
-
+def decrypt_selected_main():
+    """Decrypt and copy password for the selected row."""
+    sel = tree.selection()
+    if not sel:
+        messagebox.showwarning("Selection", "Please select an account first.")
+        return
+    index = int(sel[0])
+    
     if not verify_identity(parent=root):
         return
     try:
@@ -260,7 +261,6 @@ def decrypt_selected(index=None):
             root.clipboard_clear()
             root.clipboard_append(pwd)
             messagebox.showinfo("Nemo's PM", f"Password for {row['name']}:\n\nCopied to Clipboard!\n\n(Clipboard will clear in 30 seconds)")
-            # Security: Auto clear clipboard
             root.after(30000, lambda: root.clipboard_clear())
     except Exception as e:
         messagebox.showerror("Error", f"System Error: {e}")
@@ -288,107 +288,123 @@ def on_tree_click(event):
         
         index = int(item_id)
         
-        if col == "#4": # Edit
-            open_account_window(mode="edit", index=index)
-        elif col == "#5": # Delete
+        if col == "#4":  # Edit — requires identity verification
+            if not verify_identity(parent=root):
+                return
+            show_form_panel(mode="edit", index=index)
+        elif col == "#5":  # Delete
             delete_selected(index)
 
-def startup_login():
-    root.withdraw()
+def login_check(event=None):
+    if login_pass_entry.get() == Marlins_Secret:
+        login_pass_entry.delete(0, tk.END)
+        login_error_label.config(text="")
+        show_panel("main")
+        refresh_table()
+    else:
+        login_pass_entry.delete(0, tk.END)
+        login_error_label.config(text="🐠 Swam the wrong way!")
 
-    # Attempt Face Authentication First
+def startup_login():
+    """Handle startup: try Face Auth, then show login panel."""
     if FACE_AUTH_AVAILABLE:
         try:
             auth = FaceAuthenticator()
             success, msg = auth.verify_user()
             if success:
-                root.deiconify()
                 messagebox.showinfo("Welcome", f"Identity Verified!\n{msg}\nJust keep swimming!")
+                show_panel("main")
+                refresh_table()
                 return
             else:
-                # If it failed because no owner is registered, tell the user
                 if "No owner registered" in msg:
                     messagebox.showwarning("Setup Required", f"Face ID not ready: {msg}\nPlease run 'register_face.py' first.")
                 else:
                     messagebox.showwarning("Oops, Swam the wrong way!", f"{msg}")
         except Exception as e:
             messagebox.showerror("Face ID Error", f"Could not start Face ID: {e}")
-    else:
-        # Debug message to see if the module was bundled
-        # messagebox.showinfo("Debug", "Face authentication module not detected in this build.")
-        pass
-
-    login_win = tk.Toplevel(root)
-    login_win.title("Security Check")
-    login_win.geometry("400x300")
-    login_win.configure(bg=BG_COLOR)
-    login_win.protocol("WM_DELETE_WINDOW", lambda: root.destroy()) 
     
-    # Center the login window
-    screen_width = login_win.winfo_screenwidth()
-    screen_height = login_win.winfo_screenheight()
-    x = (screen_width/2) - (400/2)
-    y = (screen_height/2) - (300/2)
-    login_win.geometry('+%d+%d' % (x, y))
+    # Show login panel
+    show_panel("login")
+    login_pass_entry.focus_set()
 
-    tk.Label(login_win, text="LOCKED", font=("Impact", 30), fg=ACCENT_RED, bg=BG_COLOR).pack(pady=(40, 10))
-    tk.Label(login_win, text="Enter Marlin's Secret", font=("Arial", 10), fg="grey", bg=BG_COLOR).pack(pady=(0, 10))
+# ============================================================
+#               PANEL 1 — LOGIN SCREEN
+# ============================================================
+login_panel = tk.Frame(root, bg=BG_COLOR)
+panels["login"] = login_panel
 
-    e_pass = tk.Entry(login_win, show="•", font=("Arial", 14), width=25, justify="center", bg=SECONDARY_BG, fg="white", insertbackground="white", bd=0)
-    e_pass.pack(ipady=5, pady=5)
-    e_pass.focus()
+login_center = tk.Frame(login_panel, bg=BG_COLOR)
+login_center.place(relx=0.5, rely=0.5, anchor="center")
 
-    def check(event=None):
-        if e_pass.get() == Marlins_Secret:
-            login_win.destroy()
-            root.deiconify()
-        else:
-            e_pass.delete(0, tk.END)
-            messagebox.showerror("Access Denied", "Swam the wrong way!", parent=login_win)
+tk.Label(login_center, text="🔒", font=("Segoe UI Emoji", 60), bg=BG_COLOR, fg=ACCENT_RED).pack(pady=(0, 5))
+tk.Label(login_center, text="LOCKED", font=("Impact", 40), fg=ACCENT_RED, bg=BG_COLOR).pack(pady=(0, 5))
+tk.Label(login_center, text="Enter Marlin's Secret", font=("Segoe UI", 12), fg="grey", bg=BG_COLOR).pack(pady=(0, 15))
 
-    e_pass.bind("<Return>", check)
-    
-    create_button(login_win, "UNLOCK", check, ACCENT_BLUE, width=20).pack(pady=20)
+login_pass_entry = tk.Entry(login_center, show="•", font=("Segoe UI", 16), width=30, justify="center",
+                            bg=SECONDARY_BG, fg="white", insertbackground="white", bd=0)
+login_pass_entry.pack(ipady=8, pady=5)
 
-# ---------------- MAIN UI SETUP ----------------
-root = tk.Tk()
-root.title("NEMO'S PASSWORD MANAGER")
-root.geometry("900x700") 
-root.configure(bg=BG_COLOR)
+login_error_label = tk.Label(login_center, text="", font=("Segoe UI", 9), fg=ACCENT_RED, bg=BG_COLOR)
+login_error_label.pack(pady=(2, 5))
 
-style = ttk.Style()
-style.theme_use("clam")
-style.configure("Treeview", background=SECONDARY_BG, foreground=FG_COLOR, fieldbackground=SECONDARY_BG, rowheight=30)
-style.configure("Treeview.Heading", background=BG_COLOR, foreground=FG_COLOR, font=("Arial", 10, "bold"))
-style.map("Treeview", background=[('selected', ACCENT_BLUE)])
+login_pass_entry.bind("<Return>", login_check)
+create_button(login_center, "UNLOCK", login_check, ACCENT_BLUE, width=25).pack(pady=20)
 
-tk.Label(root, text="NEMO'S PASSWORD MANAGER", font=("Impact", 35), bg=BG_COLOR, fg=FG_COLOR).pack(pady=(20, 10))
+tk.Label(login_center, text="Press Escape to toggle fullscreen  •  F11 to toggle", font=("Segoe UI", 9), fg="#555555", bg=BG_COLOR).pack(pady=(20, 0))
+
+# ============================================================
+#              PANEL 2 — MAIN TABLE VIEW
+# ============================================================
+main_panel = tk.Frame(root, bg=BG_COLOR)
+panels["main"] = main_panel
+
+# Header
+header_frame = tk.Frame(main_panel, bg=BG_COLOR)
+header_frame.pack(fill="x", padx=40, pady=(30, 10))
+
+tk.Label(header_frame, text="🐠 NEMO'S PASSWORD MANAGER", font=("Impact", 36), bg=BG_COLOR, fg=FG_COLOR).pack(side="left")
+tk.Label(header_frame, text="[Esc] Toggle Fullscreen", font=("Segoe UI", 9), fg="#555555", bg=BG_COLOR).pack(side="right")
+
+# Search bar
+search_frame = tk.Frame(main_panel, bg=BG_COLOR)
+search_frame.pack(fill="x", padx=40, pady=(5, 10))
 
 search_var = tk.StringVar()
-search_frame = tk.Frame(root, bg=BG_COLOR)
-search_frame.pack(pady=10)
-
-search_entry = tk.Entry(search_frame, textvariable=search_var, font=("Segoe UI", 12), width=68, fg="grey", bg=SECONDARY_BG, insertbackground="white", bd=0)
+search_entry = tk.Entry(search_frame, textvariable=search_var, font=("Segoe UI", 13), fg="grey",
+                        bg=SECONDARY_BG, insertbackground="white", bd=0)
 search_entry.insert(0, "Search accounts...")
+search_entry.pack(fill="x", ipady=10)
+
+def on_search_focus_in(event):
+    if search_entry.get() == "Search accounts...":
+        search_entry.delete(0, tk.END)
+        search_entry.config(fg="white")
+
+def on_search_focus_out(event):
+    if search_entry.get() == "":
+        search_entry.insert(0, "Search accounts...")
+        search_entry.config(fg="grey")
+
 search_entry.bind("<FocusIn>", on_search_focus_in)
 search_entry.bind("<FocusOut>", on_search_focus_out)
-search_entry.pack(ipady=8)
 
-table_frame = tk.Frame(root, bg=BG_COLOR)
-table_frame.pack(expand=True, fill="both", padx=20)
+# Table
+table_frame = tk.Frame(main_panel, bg=BG_COLOR)
+table_frame.pack(expand=True, fill="both", padx=40, pady=(0, 10))
 
-tree = ttk.Treeview(table_frame, columns=("Name","URL","Username", "Edit", "Delete"), show="headings", height=12)
+tree = ttk.Treeview(table_frame, columns=("Name","URL","Username", "Edit", "Delete"), show="headings")
 tree.heading("Name", text="ACCOUNT")
 tree.heading("URL", text="URL")
 tree.heading("Username", text="USERNAME")
 tree.heading("Edit", text="EDIT")
 tree.heading("Delete", text="DELETE")
 
-tree.column("Name", width=200, anchor="center")
-tree.column("URL", width=250, anchor="center")
-tree.column("Username", width=200, anchor="center")
-tree.column("Edit", width=80, anchor="center")
-tree.column("Delete", width=80, anchor="center")
+tree.column("Name", width=250, anchor="center", stretch=True)
+tree.column("URL", width=300, anchor="center", stretch=True)
+tree.column("Username", width=250, anchor="center", stretch=True)
+tree.column("Edit", width=100, anchor="center", stretch=False)
+tree.column("Delete", width=100, anchor="center", stretch=False)
 
 tree_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
 tree.configure(yscrollcommand=tree_scroll.set)
@@ -397,15 +413,78 @@ tree_scroll.pack(side="right", fill="y")
 
 tree.bind("<ButtonRelease-1>", on_tree_click)
 
-btn_frame = tk.Frame(root, bg=BG_COLOR)
-btn_frame.pack(pady=20) 
+# Bottom buttons
+btn_frame = tk.Frame(main_panel, bg=BG_COLOR)
+btn_frame.pack(pady=(10, 30))
 
-create_button(btn_frame, "+ ADD ACCOUNT", lambda: open_account_window(mode="add"), ACCENT_BLUE).pack(side="left", padx=10)
-create_button(btn_frame, "🔑 VIEW / COPY", decrypt_selected, ACCENT_GREEN).pack(side="left", padx=10)
+create_button(btn_frame, "+ ADD ACCOUNT", lambda: show_form_panel(mode="add"), ACCENT_BLUE, width=20).pack(side="left", padx=10)
+create_button(btn_frame, "🔑 VIEW / COPY", decrypt_selected_main, ACCENT_GREEN, width=20).pack(side="left", padx=10)
 
+# ============================================================
+#              PANEL 3 — ADD / EDIT FORM
+# ============================================================
+form_panel = tk.Frame(root, bg=BG_COLOR)
+panels["form"] = form_panel
+
+form_center = tk.Frame(form_panel, bg=FORM_BG, padx=40, pady=30)
+form_center.place(relx=0.5, rely=0.5, anchor="center")
+
+form_title_label = tk.Label(form_center, text="ADD NEW ACCOUNT", font=("Impact", 28), bg=FORM_BG, fg=FG_COLOR)
+form_title_label.pack(pady=(0, 20))
+
+lbl_cfg = {"bg": FORM_BG, "fg": "#aaaaaa", "font": ("Segoe UI", 10, "bold")}
+entry_cfg = {"font": ("Segoe UI", 13), "bg": SECONDARY_BG, "fg": "white", "insertbackground": "white", "bd": 0, "width": 40}
+
+tk.Label(form_center, text="ACCOUNT NAME", **lbl_cfg).pack(anchor="w", pady=(5, 0))
+e_name = tk.Entry(form_center, **entry_cfg)
+e_name.pack(fill="x", ipady=7, pady=(2, 8))
+
+tk.Label(form_center, text="URL", **lbl_cfg).pack(anchor="w", pady=(5, 0))
+e_url = tk.Entry(form_center, **entry_cfg)
+e_url.pack(fill="x", ipady=7, pady=(2, 8))
+
+tk.Label(form_center, text="USERNAME", **lbl_cfg).pack(anchor="w", pady=(5, 0))
+e_user = tk.Entry(form_center, **entry_cfg)
+e_user.pack(fill="x", ipady=7, pady=(2, 8))
+
+tk.Label(form_center, text="PASSWORD", **lbl_cfg).pack(anchor="w", pady=(5, 0))
+e_pass = tk.Entry(form_center, show="*", **entry_cfg)
+e_pass.pack(fill="x", ipady=7, pady=(2, 8))
+
+tk.Label(form_center, text="ENCRYPTION TYPE (1-4)", **lbl_cfg).pack(anchor="w", pady=(5, 0))
+
+enc_frame = tk.Frame(form_center, bg=FORM_BG)
+enc_frame.pack(fill="x", pady=(2, 15))
+
+def validate_number(char):
+    if char.isdigit() and int(char) in [1,2,3,4]:
+        return True
+    if char == "": return True
+    return char.isdigit()
+
+def randomize_enc():
+    e_type.delete(0, tk.END)
+    e_type.insert(0, str(random.randint(1, 4)))
+
+vcmd = (root.register(validate_number), '%S')
+e_type = tk.Entry(enc_frame, validate="key", validatecommand=vcmd, font=("Segoe UI", 13),
+                  bg=SECONDARY_BG, fg="white", insertbackground="white", bd=0, width=10)
+e_type.pack(side="left", ipady=7, padx=(0, 8))
+
+tk.Button(enc_frame, text="🎲 Random", command=randomize_enc, bg=ACCENT_BLUE, fg="white",
+          font=("Segoe UI", 10, "bold"), width=10, cursor="hand2", relief="flat").pack(side="left")
+
+# Form action buttons
+form_btn_frame = tk.Frame(form_center, bg=FORM_BG)
+form_btn_frame.pack(pady=(10, 0))
+
+create_button(form_btn_frame, "💾 SAVE", save_form, ACCENT_GREEN, width=15).pack(side="left", padx=8)
+create_button(form_btn_frame, "✖ CANCEL", cancel_form, ACCENT_RED, width=15).pack(side="left", padx=8)
+
+# ============================================================
+#                     STARTUP
+# ============================================================
 search_var.trace_add("write", lambda *args: refresh_table())
 
-# Run initialization
-root.after(100, lambda: refresh_table())
-root.after(0, startup_login) # Schedule login after root is created
+root.after(100, startup_login)
 root.mainloop()
