@@ -48,7 +48,7 @@ To use the secure Face ID feature:
     Open `Namo.py` or `STARTNAMO.bat`. It will now attempt to verify your face at startup!
     _(Note: If you use the .exe, you may need to rebuild it to include these new features.)_
 
-- **MASTER PASSWORD IS** Nemoishere
+- **Marlin's Secret is** _Nemoishere_
   if you wish to change the Master Password you can right click `Namo.py` then Open with Notepad then `Ctrl + F` and find the master password to change it
 
   _Just keep swimming, and never lose a password again!_ 🌊

@@ -8,7 +8,7 @@ import random
 # ---------------- CONFIGURATION ----------------
 CSV_FILE = "Nemo's.Memory.csv"
 KEY_FILE = "MemoryKey.txt"
-MASTER_PASSWORD = "Nemoishere"
+Marlins_Secret = "Nemoishere"
 
 BG_COLOR = "#1e1e1e"       
 SECONDARY_BG = "#2d2d2d"   
@@ -103,7 +103,7 @@ except ImportError:
 
 def verify_identity(parent=None):
     """
-    Verifies identity using Face Recognition (if available) or Master Password.
+    Verifies identity using Face Recognition (if available) or Marlin's Secret(master password).
     Returns True if verified, False otherwise.
     """
     if FACE_AUTH_AVAILABLE:
@@ -117,8 +117,8 @@ def verify_identity(parent=None):
                 messagebox.showerror("Authentication Failed", f"{msg}\nSwitching to password.", parent=parent)
     
     # Fallback to Password
-    pw = simpledialog.askstring("Master Password", "Enter Master Password:", show="*", parent=parent)
-    return pw == MASTER_PASSWORD
+    pw = simpledialog.askstring("Master Password", "Enter Marlin's Secret:", show="*", parent=parent)
+    return pw == Marlins_Secret
 
 def refresh_table():
     try:
@@ -303,14 +303,14 @@ def startup_login():
             success, msg = auth.verify_user()
             if success:
                 root.deiconify()
-                messagebox.showinfo("Welcome", f"Identity Verified!\n{msg}")
+                messagebox.showinfo("Welcome", f"Identity Verified!\n{msg}\nJust keep swimming!")
                 return
             else:
                 # If it failed because no owner is registered, tell the user
                 if "No owner registered" in msg:
                     messagebox.showwarning("Setup Required", f"Face ID not ready: {msg}\nPlease run 'register_face.py' first.")
                 else:
-                    messagebox.showwarning("Authentication Failed", f"{msg}")
+                    messagebox.showwarning("Oops, Swam the wrong way!", f"{msg}")
         except Exception as e:
             messagebox.showerror("Face ID Error", f"Could not start Face ID: {e}")
     else:
@@ -332,19 +332,19 @@ def startup_login():
     login_win.geometry('+%d+%d' % (x, y))
 
     tk.Label(login_win, text="LOCKED", font=("Impact", 30), fg=ACCENT_RED, bg=BG_COLOR).pack(pady=(40, 10))
-    tk.Label(login_win, text="Enter Master Password", font=("Arial", 10), fg="grey", bg=BG_COLOR).pack(pady=(0, 10))
+    tk.Label(login_win, text="Enter Marlin's Secret", font=("Arial", 10), fg="grey", bg=BG_COLOR).pack(pady=(0, 10))
 
     e_pass = tk.Entry(login_win, show="•", font=("Arial", 14), width=25, justify="center", bg=SECONDARY_BG, fg="white", insertbackground="white", bd=0)
     e_pass.pack(ipady=5, pady=5)
     e_pass.focus()
 
     def check(event=None):
-        if e_pass.get() == MASTER_PASSWORD:
+        if e_pass.get() == Marlins_Secret:
             login_win.destroy()
             root.deiconify()
         else:
             e_pass.delete(0, tk.END)
-            messagebox.showerror("Access Denied", "Incorrect Password.", parent=login_win)
+            messagebox.showerror("Access Denied", "Swam the wrong way!", parent=login_win)
 
     e_pass.bind("<Return>", check)
     
