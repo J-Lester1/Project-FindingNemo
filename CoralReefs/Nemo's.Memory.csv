@@ -1,2 +1,11 @@
-Unnamed: 0,name,url,username,password,encryption_type
-
+name,url,username,password,encryption_type
+Google,https://google.com,nemo@gmail.com,uweKjteD-EBZ2JsOFOgvUPs=,2
+Facebook,https://facebook.com,nemo.fish,zF4m7BERnOxOQ_-ezZviBMAGcA==,3
+Twitter,https://twitter.com,@fishy_nemo,6fnDXf6wr_b2rJC7CpU=,4
+GitHub,https://github.com,codernemo,2ufSW-WJtfrnqJH5UA==,4
+Bank of Atlantis,https://atlantisbank.sea,account_123456,7vvWXfi3vfDhvZDIWcjl7dz91Q==,4
+Amazon,https://amazon.com,shopper_fish,yI3LhedHT9GfBwr8NUDq,2
+Netflix,https://netflix.com,moviebuff,z4nMiOtSTdeCBgf4PkH7,2
+Spotify,https://spotify.com,musiclover,14nkUkfNmAIK5C1Z-A==,2
+LinkedIn,https://linkedin.com,professional_nemo,5lA46gkZgNxSQ-qe0Q==,1
+Discord,https://discord.com,gamer_nemo#1234,2efVW-WWvP36rJbl,4
