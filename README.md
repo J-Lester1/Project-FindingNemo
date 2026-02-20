@@ -43,7 +43,7 @@ To use the secure Face ID feature:
 1.  **Register your face:**
     Run the registration script by double-clicking `register_face.py` (or click `WhoismyMaster.bat `or running `py register_face.py` in cmd).
     _Look at the camera until the process completes._
-    \_I suggest that you delete/ the `Whoismymaster.bat` and `register_face.py` after setup to keep other people from changing the master\_
+    _I suggest that you delete/ the `Whoismymaster.bat` and `register_face.py` after setup to keep other people from changing the master_
 2.  **Launch Namo:**
     Open `Namo.py` or `STARTNAMO.bat`. It will now attempt to verify your face at startup!
     _(Note: If you use the .exe, you may need to rebuild it to include these new features.)_
